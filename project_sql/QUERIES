@@ -1,0 +1,58 @@
+/* 
+Question1 
+find out what are top paying jobs for my role
+- I am a Data Scientist
+- I want to know what are the top paying jobs for Data Scientists that are available remotely
+*/
+select * from job_postings_fact limit 10;
+
+SELECT job_id, job_title_short, 
+    job_title, job_location,
+    salary_year_avg, job_posted_date,
+    name AS company_name
+FROM job_postings_fact
+LEFT JOIN company_dim ON job_postings_fact.company_id = company_dim.company_id
+WHERE job_title_short = 'Data Scientist' AND job_location = 'Anywhere' AND salary_year_avg IS NOT NULL
+ORDER BY salary_year_avg DESC
+LIMIT 10;
+
+
+/* Question 2
+what are the skills required for these top paying roles?
+- use the initial result for the top paying jobs for Data Scientists
+- find out the skills required for these jobs
+-use a CTE
+*/
+WITH top_paying_ds_jobs AS (
+    SELECT job_id,
+        job_title,
+        salary_year_avg,
+        name AS company_name
+    FROM job_postings_fact
+    LEFT JOIN company_dim ON job_postings_fact.company_id = company_dim.company_id
+    WHERE job_title_short = 'Data Scientist' AND job_location = 'Anywhere' AND salary_year_avg IS NOT NULL
+    ORDER BY salary_year_avg DESC
+    LIMIT 30
+)
+
+SELECT top_paying_ds_jobs.*, skills
+FROM top_paying_ds_jobs
+INNER JOIN skills_job_dim ON top_paying_ds_jobs.job_id = skills_job_dim.job_id
+INNER JOIN skills_dim ON skills_job_dim.skill_id = skills_dim.skill_id 
+
+/* Question 3 
+what are the most in demand skills for my role?
+*/
+WITH remote_job_skills AS (
+    SELECT skill_id, COUNT(skill_id) AS skill_count
+    FROM skills_job_dim
+    INNER JOIN job_postings_fact ON skills_job_dim.job_id = job_postings_fact.job_id
+    WHERE job_postings_fact.job_work_from_home = TRUE
+    AND job_postings_fact.job_title_short = 'Data Scientist'
+    GROUP BY skill_id
+)
+select skills_dim.skill_id, skills AS skill_name, skill_count
+from remote_job_skills
+inner join skills_dim on remote_job_skills.skill_id = skills_dim.skill_id
+ORDER BY skill_count DESC 
+limit 10;
